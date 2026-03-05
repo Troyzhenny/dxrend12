@@ -1,0 +1,9 @@
+# Settings + scripts
+*.vs
+*.bat
+
+# Build files
+[Bb]uild/
+
+# Cmake
+*CMakePresets.json
