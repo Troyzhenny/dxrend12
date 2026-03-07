@@ -87,7 +87,53 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
 	ShowWindow(hwnd, nCmdShow);
 
 	// DX12 Setup
-	UINT DXGIFactoryFlags = 0;
+	UINT dxgiFactoryFlags = 0;
 
+	// create device
+	ComPtr<ID3D12Device> device;
+	if (FAILED(D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&device))))
+	{
+		MessageBox(nullptr, L"Failed to create D3D12 device!", L"Error", MB_OK);
+		return -1;
+	}
+
+	// create command queue
+	D3D12_COMMAND_QUEUE_DESC queueDesc = {};
+	queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
+	queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
+
+	ComPtr<ID3D12CommandQueue> commandQueue;
+	device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&commandQueue));
+
+	// create swapchain
+	ComPtr<IDXGIFactory4> factory;
+	CreateDXGIFactory2(dxgiFactoryFlags, IID_PPV_ARGS(&factory));
+
+	DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
+	swapChainDesc.BufferCount = 2; // front and back
+	swapChainDesc.Width = WIDTH;
+	swapChainDesc.Height = HEIGHT;
+	swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+	swapChainDesc.SampleDesc.Count = 1;
+
+	ComPtr<IDXGISwapChain1> swapChain;
+	factory->CreateSwapChainForHwnd(
+		commandQueue.Get(), hwnd, &swapChainDesc, nullptr, nullptr, &swapChain);
+	ComPtr<IDXGISwapChain3> swapChain3;
+	swapChain.As(&swapChain3);
+
+	// Create discriptor heaps for render target views
+	D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
+	rtvHeapDesc.NumDescriptors = 2;
+	rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+	rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+
+	ComPtr<ID3D12DescriptorHeap> rtvHeap;
+	device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&rtvHeap));
+	UINT rtvDescriptorSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+
+	// create render target views
 	return 0;
 }
