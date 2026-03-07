@@ -18,9 +18,11 @@
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
 
-// Window Dimensions
+// Globals
 const UINT WIDTH = 800;
 const UINT HEIGHT = 600;
+const TCHAR* WndClassName = "Window Blueprint";
+const TCHAR* WndTitle = "Dxrend 12 Triangle";
 
 // Fordward Decl
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -65,15 +67,24 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
 {
 	// window setup
 	WNDCLASS wc = {};
+
 	wc.lpfnWndProc = WindowProc;
 	wc.hInstance = hInstance;
-	wc.lpszClassName = L"DX12WindowClass";
+	wc.hIcon = nullptr;
+	wc.hCursor = LoadCursor(NULL, IDC_ARROW);
+	wc.lpszClassName = WndClassName;
 	RegisterClass(&wc);
 
+	if(!RegisterClass(&wc))
+    {
+        MessageBox(NULL, "Call to RegisterClassEx failed!", "Done know it mash up!", NULL);
+        return 1;
+    }
+
 	HWND hwnd = CreateWindow(
-		L"DX12WindowClass",
-		L"Directx 12 Triangle",
 		WS_OVERLAPPEDWINDOW,
+		WndClassName,
+		WndTitle,
 		CW_USEDEFAULT, CW_USEDEFAULT,
 		WIDTH, HEIGHT,
 		nullptr, nullptr, hInstance, nullptr
@@ -81,6 +92,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
 
 	if (!hwnd)
 	{
+		MessageBox(NULL, "Call to CreateWindow failed!", "Error", NULL);
 		return -1;
 	}
 
@@ -93,7 +105,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
 	ComPtr<ID3D12Device> device;
 	if (FAILED(D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&device))))
 	{
-		MessageBox(nullptr, L"Failed to create D3D12 device!", L"Error", MB_OK);
+		MessageBox(nullptr, "Failed to create D3D12 device!", "Error", MB_OK);
 		return -1;
 	}
 
