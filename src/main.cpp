@@ -147,5 +147,16 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
 	UINT rtvDescriptorSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 
 	// create render target views
+	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(rtvHeap->GetCPUDescriptorHandleForHeapStart());
+	ComPtr<ID3D12Resource> renderTargets[2];
+
+	for (UINT i = 0; i < 3; i++)
+	{
+		swapChain->GetBuffer(i, IID_PPV_ARGS(&renderTargets[i]));
+		device->CreateRenderTargetView(renderTargets[i].Get(), nullptr, rtvHandle);
+		rtvHandle.Offset(1, rtvDescriptorSize);
+	}
+
+	// Create command allocator
 	return 0;
 }
