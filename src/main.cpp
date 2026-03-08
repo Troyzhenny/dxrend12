@@ -191,6 +191,58 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
 		return 1;
 	}
 
+	// Define vertex input layout
+	D3D12_INPUT_ELEMENT_DESC inputElementDesc[] = {
+		{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}
+	};
+
+	// Create pipeline state
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = 0;
+	psoDesc.InputLayout = { inputElementDesc, _countof(inputElementDesc) };
+	psoDesc.pRootSignature = rootSignature.Get();
+	psoDesc.VS = { vertexShaderBlob->GetBufferPointer(), vertexShaderBlob->GetBufferSize() };
+	psoDesc.PS = { pixelShaderBlob->GetBufferPointer(), pixelShaderBlob->GetBufferSize() };
+	psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+	psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+	psoDesc.DepthStencilState.DepthEnable = FALSE;
+	psoDesc.DepthStencilState.StencilEnable = FALSE;
+	psoDesc.SampleMask = UINT_MAX;
+	psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+	psoDesc.NumRenderTargets = 1;
+	psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+	psoDesc.SampleDesc.Count = 1;
+
+	ComPtr<ID3D12PipelineState> pipelineState;
+	device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&pipelineState));
+
+	// create command list
+	ComPtr<ID3D12GraphicsCommandList> commandList;
+	device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, commandAllocator.Get(), pipelineState.Get(), IID_PPV_ARGS(&commandList));
+
+	// Create vertex buffer
+	struct Vertex {
+		XMFLOAT3 position;
+	};
+
+	Vertex vertices[] = {
+		{XMFLOAT3(0.0f, 0.5f, 0.0f)}, // top center
+		{XMFLOAT3(0.5f, -0.5f, 0.0f)}, // bottom right
+		{XMFLOAT3(-0.5f, -0.5f, 0.0f)} // bottom left
+	};
+
+	const UINT vertexBufferSize = sizeof(vertices);
+
+	ComPtr<ID3D12Resource> vertexBuffer;
+	device->CreateCommittedResource(
+		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+		D3D12_HEAP_FLAG_NONE,
+		&CD3DX12_RESOURCE_DESC::Buffer(vertexBufferSize),
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(&vertexBuffer)
+	);
+
+	// copy vertex data
 
 
 	return 0;
