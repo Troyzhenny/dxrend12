@@ -175,6 +175,23 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
 
 
 	// Compile Shaders
+	ComPtr<ID3DBlob> vertexShaderBlob;
+	ComPtr<ID3DBlob> pixelShaderBlob;
+	ComPtr<ID3DBlob> errorBlob;
+
+	if (FAILED(D3DCompile(vertexShader, strlen(vertexShader), nullptr, nullptr, nullptr, "main", "vs_5_0", 0, 0, &vertexShaderBlob, &errorBlob)))
+	{
+		MessageBoxA(nullptr, (char*)errorBlob->GetBufferPointer(), "Vertex Shader Error", MB_OK);
+		return 1;
+	}
+
+	if (FAILED(D3DCompile(pixelShader, strlen(pixelShader), nullptr, nullptr, nullptr, "main", "vs_5_0", 0, 0, &pixelShaderBlob, &errorBlob)))
+	{
+		MessageBoxA(nullptr, (char*)errorBlob->GetBufferPointer(), "Pixel Shader Error", MB_OK);
+		return 1;
+	}
+
+
 
 	return 0;
 }
