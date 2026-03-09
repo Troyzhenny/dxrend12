@@ -7,7 +7,7 @@
 #include <string>
 #include <wrl.h>
 #include <iostream>
-#include "d3dx12.h" // directx-headers
+#include "d3dx12.h" // directx-headers not available in windows sdk
 
 
 #pragma comment(lib, "d3d12.lib")
@@ -24,7 +24,7 @@ const UINT HEIGHT = 600;
 const TCHAR* WndClassName = "Window Blueprint";
 const TCHAR* WndTitle = "Dxrend 12 Triangle";
 
-// Fordward Decl
+// Forward Decl
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 // Shader code - will be moved later
@@ -36,16 +36,16 @@ const char* vertexShader = R"(
 	struct PS_INPUT 
 	{
 		float4 pos : SV_POSITION;
-		float4 COLOR;
+		float4 color : COLOR;
 	};
 
 	PS_INPUT main(VS_INPUT input)
 	{
 		PS_INPUT output;
-		output.pos = float4(input.pos, 1.9f);
+		output.pos = float4(input.pos, 1.0f);
 
 		// Assign colors based on vertex position
-		output.color = float4(clamp(input.pos.xyz + 2.0f, 0.0f, 1.0f), 1.0f);
+		output.color = float4(clamp(input.pos.xyz + 0.5f, 0.0f, 1.0f), 1.0f);
 
 		return output;
 	};
@@ -53,7 +53,7 @@ const char* vertexShader = R"(
 
 const char* pixelShader = R"(
 	struct PS_INPUT {
-		floatt4 pos : POSITION;
+		float4 pos : SV_POSITION;
 		float4 color : COLOR;
 	};
 
@@ -65,26 +65,24 @@ const char* pixelShader = R"(
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
 {
-	// window setup
+	// Window setup
 	WNDCLASS wc = {};
-
 	wc.lpfnWndProc = WindowProc;
 	wc.hInstance = hInstance;
 	wc.hIcon = nullptr;
 	wc.hCursor = LoadCursor(NULL, IDC_ARROW);
 	wc.lpszClassName = WndClassName;
-	RegisterClass(&wc);
 
-	if(!RegisterClass(&wc))
-    {
-        MessageBox(NULL, "Call to RegisterClassEx failed!", "Done know it mash up!", NULL);
-        return 1;
-    }
+	if (!RegisterClass(&wc))
+	{
+		MessageBox(NULL, "Call to RegisterClass failed!", "Don't know it mash up!", NULL);
+		return 1;
+	}
 
 	HWND hwnd = CreateWindow(
-		WS_OVERLAPPEDWINDOW,
 		WndClassName,
 		WndTitle,
+		WS_OVERLAPPEDWINDOW,
 		CW_USEDEFAULT, CW_USEDEFAULT,
 		WIDTH, HEIGHT,
 		nullptr, nullptr, hInstance, nullptr
@@ -101,7 +99,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
 	// DX12 Setup
 	UINT dxgiFactoryFlags = 0;
 
-	// create device
+	// Create device
 	ComPtr<ID3D12Device> device;
 	if (FAILED(D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&device))))
 	{
@@ -109,7 +107,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
 		return -1;
 	}
 
-	// create command queue
+	// Create command queue
 	D3D12_COMMAND_QUEUE_DESC queueDesc = {};
 	queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
 	queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
@@ -117,7 +115,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
 	ComPtr<ID3D12CommandQueue> commandQueue;
 	device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&commandQueue));
 
-	// create swapchain
+	// Create swapchain
 	ComPtr<IDXGIFactory4> factory;
 	CreateDXGIFactory2(dxgiFactoryFlags, IID_PPV_ARGS(&factory));
 
@@ -136,7 +134,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
 	ComPtr<IDXGISwapChain3> swapChain3;
 	swapChain.As(&swapChain3);
 
-	// Create discriptor heaps for render target views
+	// Create descriptor heaps for render target views
 	D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
 	rtvHeapDesc.NumDescriptors = 2;
 	rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
@@ -146,21 +144,20 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
 	device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&rtvHeap));
 	UINT rtvDescriptorSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 
-	// create render target views
-	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(rtvHeap->GetCPUDescriptorHandleForHeapStart());
+	// Create render target views
+	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandleStart(rtvHeap->GetCPUDescriptorHandleForHeapStart());
 	ComPtr<ID3D12Resource> renderTargets[2];
 
-	for (UINT i = 0; i < 3; i++)
+	for (UINT i = 0; i < 2; i++)
 	{
 		swapChain->GetBuffer(i, IID_PPV_ARGS(&renderTargets[i]));
-		device->CreateRenderTargetView(renderTargets[i].Get(), nullptr, rtvHandle);
-		rtvHandle.Offset(1, rtvDescriptorSize);
+		device->CreateRenderTargetView(renderTargets[i].Get(), nullptr, rtvHandleStart);
+		rtvHandleStart.Offset(1, rtvDescriptorSize);
 	}
 
 	// Create command allocator
 	ComPtr<ID3D12CommandAllocator> commandAllocator;
 	device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&commandAllocator));
-
 
 	// Create root signature
 	CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc;
@@ -173,7 +170,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
 	ComPtr<ID3D12RootSignature> rootSignature;
 	device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&rootSignature));
 
-
 	// Compile Shaders
 	ComPtr<ID3DBlob> vertexShaderBlob;
 	ComPtr<ID3DBlob> pixelShaderBlob;
@@ -185,7 +181,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
 		return 1;
 	}
 
-	if (FAILED(D3DCompile(pixelShader, strlen(pixelShader), nullptr, nullptr, nullptr, "main", "vs_5_0", 0, 0, &pixelShaderBlob, &errorBlob)))
+	if (FAILED(D3DCompile(pixelShader, strlen(pixelShader), nullptr, nullptr, nullptr, "main", "ps_5_0", 0, 0, &pixelShaderBlob, &errorBlob)))
 	{
 		MessageBoxA(nullptr, (char*)errorBlob->GetBufferPointer(), "Pixel Shader Error", MB_OK);
 		return 1;
@@ -196,8 +192,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
 		{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}
 	};
 
-	// Create pipeline state
-	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = 0;
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
 	psoDesc.InputLayout = { inputElementDesc, _countof(inputElementDesc) };
 	psoDesc.pRootSignature = rootSignature.Get();
 	psoDesc.VS = { vertexShaderBlob->GetBufferPointer(), vertexShaderBlob->GetBufferSize() };
@@ -215,9 +210,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
 	ComPtr<ID3D12PipelineState> pipelineState;
 	device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&pipelineState));
 
-	// create command list
+	// Create command list
 	ComPtr<ID3D12GraphicsCommandList> commandList;
 	device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, commandAllocator.Get(), pipelineState.Get(), IID_PPV_ARGS(&commandList));
+	commandList->Close(); // close before first reset in the loop
 
 	// Create vertex buffer
 	struct Vertex {
@@ -225,24 +221,28 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
 	};
 
 	Vertex vertices[] = {
-		{XMFLOAT3(0.0f, 0.5f, 0.0f)}, // top center
-		{XMFLOAT3(0.5f, -0.5f, 0.0f)}, // bottom right
-		{XMFLOAT3(-0.5f, -0.5f, 0.0f)} // bottom left
+		{XMFLOAT3(0.0f, 0.5f, 0.0f)},   // top center
+		{XMFLOAT3(0.5f, -0.5f, 0.0f)},  // bottom right
+		{XMFLOAT3(-0.5f, -0.5f, 0.0f)}  // bottom left
 	};
 
 	const UINT vertexBufferSize = sizeof(vertices);
 
 	ComPtr<ID3D12Resource> vertexBuffer;
+
+	CD3DX12_HEAP_PROPERTIES heapProps(D3D12_HEAP_TYPE_UPLOAD);
+	CD3DX12_RESOURCE_DESC bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(vertexBufferSize);
+
 	device->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+		&heapProps,
 		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(vertexBufferSize),
+		&bufferDesc,
 		D3D12_RESOURCE_STATE_GENERIC_READ,
 		nullptr,
 		IID_PPV_ARGS(&vertexBuffer)
 	);
 
-	// copy vertex data
+	// Copy vertex data
 	UINT8* pVertexDataBegin;
 	CD3DX12_RANGE readRange(0, 0);
 	vertexBuffer->Map(0, &readRange, reinterpret_cast<void**>(&pVertexDataBegin));
@@ -262,7 +262,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
 	HANDLE fenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
 
 	// Main loop
-	UINT frameIndex = 0;
+	UINT frameIndex = swapChain3->GetCurrentBackBufferIndex();
 	bool running = true;
 	MSG msg = {};
 
@@ -281,14 +281,18 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
 
 		// Set necessary state
 		commandList->SetGraphicsRootSignature(rootSignature.Get());
-		commandList->RSSetViewports(1, &CD3DX12_VIEWPORT(0.0f, 0.0f, WIDTH, HEIGHT));
-		commandList->RSSetScissorRects(1, &CD3DX12_RECT(0, 0, WIDTH, HEIGHT));
+
+		CD3DX12_VIEWPORT viewport(0.0f, 0.0f, (float)WIDTH, (float)HEIGHT);
+		CD3DX12_RECT scissorRect(0, 0, WIDTH, HEIGHT);
+		commandList->RSSetViewports(1, &viewport);
+		commandList->RSSetScissorRects(1, &scissorRect);
 
 		// Indicate that the back buffer will be used as a render target
-		commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
+		CD3DX12_RESOURCE_BARRIER barrierToRT = CD3DX12_RESOURCE_BARRIER::Transition(
 			renderTargets[frameIndex].Get(),
 			D3D12_RESOURCE_STATE_PRESENT,
-			D3D12_RESOURCE_STATE_RENDER_TARGET));
+			D3D12_RESOURCE_STATE_RENDER_TARGET);
+		commandList->ResourceBarrier(1, &barrierToRT);
 
 		// Record commands
 		CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(
@@ -304,10 +308,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
 		commandList->DrawInstanced(3, 1, 0, 0);
 
 		// Indicate that the back buffer will now be used to present
-		commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
+		CD3DX12_RESOURCE_BARRIER barrierToPresent = CD3DX12_RESOURCE_BARRIER::Transition(
 			renderTargets[frameIndex].Get(),
 			D3D12_RESOURCE_STATE_RENDER_TARGET,
-			D3D12_RESOURCE_STATE_PRESENT));
+			D3D12_RESOURCE_STATE_PRESENT);
+		commandList->ResourceBarrier(1, &barrierToPresent);
 
 		// Execute command list
 		commandList->Close();
@@ -331,8 +336,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
 
 	// Cleanup
 	CloseHandle(fenceEvent);
-	return 0;
 
+	return 0;
 }
 
 

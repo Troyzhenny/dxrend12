@@ -9,7 +9,7 @@ endif()
 project ("dxrend12")
 
 # Add source to this project's executable.
-add_executable (dxrend12 
+add_executable (dxrend12 WIN32
 	"src/main.cpp"
 )
 
