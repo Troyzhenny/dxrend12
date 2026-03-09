@@ -298,7 +298,50 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
 
 		commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
 		const float clearColor[] = { 0.2f, 0.2f, 0.2f, 1.0f };
+		commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+		commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		commandList->IASetVertexBuffers(0, 1, &vertexBufferView);
+		commandList->DrawInstanced(3, 1, 0, 0);
 
+		// Indicate that the back buffer will now be used to present
+		commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
+			renderTargets[frameIndex].Get(),
+			D3D12_RESOURCE_STATE_RENDER_TARGET,
+			D3D12_RESOURCE_STATE_PRESENT));
 
+		// Execute command list
+		commandList->Close();
+		ID3D12CommandList* ppCommandLists[] = { commandList.Get() };
+		commandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
+
+		// Present the frame
+		swapChain->Present(1, 0);
+
+		// Wait for frame to complete
+		const UINT64 currentFenceValue = fenceValue;
+		commandQueue->Signal(fence.Get(), currentFenceValue);
+		fenceValue++;
+
+		if (fence->GetCompletedValue() < currentFenceValue) {
+			fence->SetEventOnCompletion(currentFenceValue, fenceEvent);
+			WaitForSingleObject(fenceEvent, INFINITE);
+		}
+		frameIndex = swapChain3->GetCurrentBackBufferIndex();
+	}
+
+	// Cleanup
+	CloseHandle(fenceEvent);
 	return 0;
+
+}
+
+
+LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+	switch (msg) {
+	case WM_DESTROY:
+		PostQuitMessage(0);
+		return 0;
+	default:
+		return DefWindowProc(hwnd, msg, wParam, lParam);
+	}
 }
