@@ -243,6 +243,61 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
 	);
 
 	// copy vertex data
+	UINT8* pVertexDataBegin;
+	CD3DX12_RANGE readRange(0, 0);
+	vertexBuffer->Map(0, &readRange, reinterpret_cast<void**>(&pVertexDataBegin));
+	memcpy(pVertexDataBegin, vertices, vertexBufferSize);
+	vertexBuffer->Unmap(0, nullptr);
+
+	// Init vertex buffer view
+	D3D12_VERTEX_BUFFER_VIEW vertexBufferView = {};
+	vertexBufferView.BufferLocation = vertexBuffer->GetGPUVirtualAddress();
+	vertexBufferView.StrideInBytes = sizeof(Vertex);
+	vertexBufferView.SizeInBytes = vertexBufferSize;
+
+	// Create synchronization objects
+	ComPtr<ID3D12Fence> fence;
+	device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence));
+	UINT64 fenceValue = 1;
+	HANDLE fenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
+
+	// Main loop
+	UINT frameIndex = 0;
+	bool running = true;
+	MSG msg = {};
+
+	while (running) {
+		while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
+			if (msg.message == WM_QUIT) {
+				running = false;
+			}
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+		}
+
+		// Reset command allocator and command list
+		commandAllocator->Reset();
+		commandList->Reset(commandAllocator.Get(), pipelineState.Get());
+
+		// Set necessary state
+		commandList->SetGraphicsRootSignature(rootSignature.Get());
+		commandList->RSSetViewports(1, &CD3DX12_VIEWPORT(0.0f, 0.0f, WIDTH, HEIGHT));
+		commandList->RSSetScissorRects(1, &CD3DX12_RECT(0, 0, WIDTH, HEIGHT));
+
+		// Indicate that the back buffer will be used as a render target
+		commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
+			renderTargets[frameIndex].Get(),
+			D3D12_RESOURCE_STATE_PRESENT,
+			D3D12_RESOURCE_STATE_RENDER_TARGET));
+
+		// Record commands
+		CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(
+			rtvHeap->GetCPUDescriptorHandleForHeapStart(),
+			frameIndex,
+			rtvDescriptorSize);
+
+		commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
+		const float clearColor[] = { 0.2f, 0.2f, 0.2f, 1.0f };
 
 
 	return 0;
